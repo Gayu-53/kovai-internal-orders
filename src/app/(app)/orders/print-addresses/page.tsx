@@ -1,13 +1,16 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { Loader2, Pencil, Printer } from "lucide-react";
 import { fetchOrder } from "@/lib/api";
 import { DEFAULT_BUSINESS_INFO } from "@/lib/constants";
 import type { Order } from "@/lib/types";
 
-export default function PrintAddressesPage() {
+export const dynamic = "force-dynamic";
+
+function PrintAddressesContent() {
   const searchParams = useSearchParams();
   const idsParam = searchParams.get("ids");
 
@@ -99,7 +102,6 @@ export default function PrintAddressesPage() {
           className="flex items-center gap-1.5 rounded-xl border border-border-strong bg-white px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-paper"
         >
           <Pencil className="h-4 w-4" />
-
           {editingFrom ? "Done editing" : "Edit From address"}
         </button>
 
@@ -205,5 +207,19 @@ export default function PrintAddressesPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function PrintAddressesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-paper">
+          <Loader2 className="h-6 w-6 animate-spin text-ink-faint" />
+        </div>
+      }
+    >
+      <PrintAddressesContent />
+    </Suspense>
   );
 }
