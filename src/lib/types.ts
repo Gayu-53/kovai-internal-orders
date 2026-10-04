@@ -119,7 +119,7 @@ export interface OrderFile {
   sort_order: number;
   created_at: string;
   /** Populated server-side as a short-lived signed URL, never stored. */
-  url?: string;
+  url: string | null;
 }
 
 export interface DispatchDetails {
