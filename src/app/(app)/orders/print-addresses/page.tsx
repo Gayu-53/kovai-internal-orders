@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import type { Order } from "@/lib/types";
@@ -55,7 +55,7 @@ function extractAddress(customerDetails: string) {
       !/^\d{6}$/.test(line)
   );
 
-  let address = addressLines.join(", ");
+  const address = addressLines.join(", ");
 
   const customerName = extractCustomerName(customerDetails);
 
@@ -106,7 +106,7 @@ function getOrdersPerPage(format: PrintFormat) {
   return 6;
 }
 
-export default function PrintAddressesPage() {
+function PrintAddressesContent() {
   const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -165,7 +165,11 @@ export default function PrintAddressesPage() {
 
   const sheets: Order[][] = [];
 
-  for (let i = 0; i < orders.length; i += ordersPerPage) {
+  for (
+    let i = 0;
+    i < orders.length;
+    i += ordersPerPage
+  ) {
     sheets.push(orders.slice(i, i + ordersPerPage));
   }
 
@@ -235,7 +239,9 @@ export default function PrintAddressesPage() {
 
           <button
             type="button"
-            onClick={() => setEditingFrom((value) => !value)}
+            onClick={() =>
+              setEditingFrom((value) => !value)
+            }
           >
             {editingFrom ? "DONE" : "EDIT FROM"}
           </button>
@@ -270,28 +276,35 @@ export default function PrintAddressesPage() {
                 order.customer_details || ""
               );
 
-              const customerName = extractCustomerName(
-                customerDetails
-              ).toUpperCase();
+              const customerName =
+                extractCustomerName(
+                  customerDetails
+                ).toUpperCase();
 
               const customerPhone =
                 extractPhoneNumber(customerDetails);
 
               const customerAddress =
-                extractAddress(customerDetails).toUpperCase();
+                extractAddress(
+                  customerDetails
+                ).toUpperCase();
 
               const pincode =
                 extractPincode(customerDetails);
 
               const city =
-                extractCity(customerDetails).toUpperCase();
+                extractCity(
+                  customerDetails
+                ).toUpperCase();
 
               return (
-                <div className="address-card" key={order.id}>
-
+                <div
+                  className="address-card"
+                  key={order.id}
+                >
                   {/* =====================================================
-                     FULL A4
-                     SAME DESIGN AS FULL, ONLY ENLARGED
+                       FULL A4
+                       SAME DESIGN AS FULL, ONLY ENLARGED
                   ===================================================== */}
 
                   {printFormat === "full-a4" && (
@@ -364,13 +377,14 @@ export default function PrintAddressesPage() {
                           </div>
                         )}
 
-                        {showCustomerPhone && customerPhone && (
-                          <div className="full-field">
-                            <strong>PHONE NO.</strong>
-                            <span>:</span>
-                            <b>{customerPhone}</b>
-                          </div>
-                        )}
+                        {showCustomerPhone &&
+                          customerPhone && (
+                            <div className="full-field">
+                              <strong>PHONE NO.</strong>
+                              <span>:</span>
+                              <b>{customerPhone}</b>
+                            </div>
+                          )}
                       </div>
 
                       <div className="full-bottom">
@@ -445,7 +459,7 @@ export default function PrintAddressesPage() {
                             <small>
                               THANK YOU FOR CHOOSING
                               <br />
-                              KOVAICUSTOMIZES
+                              KOVAI CUSTOMIZES
                             </small>
                           </div>
                         </div>
@@ -454,8 +468,8 @@ export default function PrintAddressesPage() {
                   )}
 
                   {/* =====================================================
-                     FULL
-                     EXISTING 2 / A4 DESIGN — DO NOT CHANGE
+                       FULL
+                       EXISTING 2 / A4 DESIGN — DO NOT CHANGE
                   ===================================================== */}
 
                   {printFormat === "full" && (
@@ -528,13 +542,14 @@ export default function PrintAddressesPage() {
                           </div>
                         )}
 
-                        {showCustomerPhone && customerPhone && (
-                          <div className="full-field">
-                            <strong>PHONE NO.</strong>
-                            <span>:</span>
-                            <b>{customerPhone}</b>
-                          </div>
-                        )}
+                        {showCustomerPhone &&
+                          customerPhone && (
+                            <div className="full-field">
+                              <strong>PHONE NO.</strong>
+                              <span>:</span>
+                              <b>{customerPhone}</b>
+                            </div>
+                          )}
                       </div>
 
                       <div className="full-bottom">
@@ -609,7 +624,7 @@ export default function PrintAddressesPage() {
                             <small>
                               THANK YOU FOR CHOOSING
                               <br />
-                              KOVAICUSTOMIZES
+                              KOVAI CUSTOMIZES
                             </small>
                           </div>
                         </div>
@@ -655,9 +670,12 @@ export default function PrintAddressesPage() {
 
                         {pincode && <div>{pincode}</div>}
 
-                        {showCustomerPhone && customerPhone && (
-                          <div>PH: {customerPhone}</div>
-                        )}
+                        {showCustomerPhone &&
+                          customerPhone && (
+                            <div>
+                              PH: {customerPhone}
+                            </div>
+                          )}
                       </div>
 
                       <div className="medium-from">
@@ -706,9 +724,10 @@ export default function PrintAddressesPage() {
 
                         {pincode && <div>{pincode}</div>}
 
-                        {showCustomerPhone && customerPhone && (
-                          <div>{customerPhone}</div>
-                        )}
+                        {showCustomerPhone &&
+                          customerPhone && (
+                            <div>{customerPhone}</div>
+                          )}
                       </div>
 
                       <div className="small-from">
@@ -723,5 +742,19 @@ export default function PrintAddressesPage() {
         ))}
       </main>
     </div>
+  );
+}
+
+export default function PrintAddressesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="print-loading">
+          LOADING...
+        </div>
+      }
+    >
+      <PrintAddressesContent />
+    </Suspense>
   );
 }
