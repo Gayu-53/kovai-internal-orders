@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { StatsGrid } from "@/components/orders/StatsGrid";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -14,7 +15,7 @@ import type {
   ProductionStatus,
   UrgencyLevel,
 } from "@/lib/types";
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, Printer, Users } from "lucide-react";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -48,7 +49,9 @@ export default function DashboardPage() {
 
           // Remove selections for orders that are no longer visible
           setSelectedOrders((current) =>
-            current.filter((id) => orders.some((order) => order.id === id))
+            current.filter((id) =>
+              orders.some((order) => order.id === id)
+            )
           );
         })
         .catch(() => {})
@@ -98,6 +101,17 @@ export default function DashboardPage() {
       <p className="mb-5 text-sm text-ink-muted">
         All orders at a glance.
       </p>
+
+      {/* Customer History */}
+      <div className="mb-5 flex flex-wrap gap-3">
+        <Link
+          href="/customers"
+          className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-brand hover:text-ink"
+        >
+          <Users className="h-4 w-4" />
+          Customer History
+        </Link>
+      </div>
 
       {stats && <StatsGrid stats={stats} />}
 

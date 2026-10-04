@@ -10,7 +10,7 @@ import {
   Printer,
   X,
 } from "lucide-react";
-import { FileGallery } from "@/components/orders/FileGallery";
+import OrderFiles from "@/components/orders/OrderFiles";
 import { FileUploader } from "@/components/orders/FileUploader";
 import { StatusSelector } from "@/components/orders/StatusSelector";
 import { OrderUrgencySelector } from "@/components/orders/OrderUrgencySelector";
@@ -534,7 +534,10 @@ export default function OrderDetailsPage({
           Files
         </h2>
 
-        <FileGallery files={order.files ?? []} />
+        <OrderFiles
+          files={order.files ?? []}
+          orderNumber={order.order_number}
+        />
 
         <div className="mt-4">
           <FileUploader
