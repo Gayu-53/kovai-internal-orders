@@ -46,7 +46,7 @@ export function FileGallery({ files }: { files: OrderFile[] }) {
           {documents.map((f) => (
             <a
               key={f.id}
-              href={f.url}
+              href={f.url ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 rounded-xl border border-border bg-white p-3 transition-colors hover:bg-paper"

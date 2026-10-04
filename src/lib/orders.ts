@@ -50,7 +50,7 @@ async function attachFileUrls(files: OrderFile[]): Promise<OrderFile[]> {
 
   if (error || !data) return files;
 
-  return files.map((f, i) => ({ ...f, url: data[i]?.signedUrl ?? undefined }));
+  return files.map((f, i) => ({ ...f, url: data[i]?.signedUrl ?? null }));
 }
 
 export async function generateOrderNumber(): Promise<string> {
