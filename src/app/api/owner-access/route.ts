@@ -1,31 +1,48 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: Request) {
+const OWNER_COOKIE = "owner_access";
+
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const password = String(body.password ?? "");
+    const body = await req.json();
+    const password = String(body?.password ?? "");
 
     const ownerPassword = process.env.OWNER_ACCESS_PASSWORD;
 
     if (!ownerPassword) {
+      console.error("OWNER_ACCESS_PASSWORD is not configured.");
       return NextResponse.json(
-        { success: false, message: "Owner password is not configured." },
+        { error: "Owner access is not configured." },
         { status: 500 }
       );
     }
 
-    if (password !== ownerPassword) {
+    if (!password || password !== ownerPassword) {
       return NextResponse.json(
-        { success: false, message: "Incorrect owner password." },
+        { error: "Incorrect password." },
         { status: 401 }
       );
     }
 
-    return NextResponse.json({ success: true });
-  } catch {
+    const response = NextResponse.json({ ok: true });
+
+    response.cookies.set({
+      name: OWNER_COOKIE,
+      value: "authorized",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60 * 8,
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Owner access error:", error);
+
     return NextResponse.json(
-      { success: false, message: "Invalid request." },
-      { status: 400 }
+      { error: "Unable to verify owner access." },
+      { status: 500 }
     );
   }
 }

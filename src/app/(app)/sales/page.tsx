@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { fetchSalesSummary } from "@/lib/api";
 import type { SalesSummary } from "@/lib/types";
 
@@ -19,47 +19,208 @@ function formatDateLabel(iso: string): string {
 }
 
 export default function SalesSummaryPage() {
+  const [authorized, setAuthorized] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+
   const [summary, setSummary] = useState<SalesSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  // Check whether owner access is already available
   useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const response = await fetch("/api/sales", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          setAuthorized(true);
+        }
+      } catch {
+        // Not authorized yet.
+      } finally {
+        setCheckingAccess(false);
+      }
+    };
+
+    checkAccess();
+  }, []);
+
+  // Load sales only after owner access is granted
+  useEffect(() => {
+    if (!authorized) return;
+
     setLoading(true);
+    setError(null);
+
     fetchSalesSummary({
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
     })
-      .then(({ summary }) => setSummary(summary))
-      .catch((err) => setError(err instanceof Error ? err.message : "Unable to load sales summary."))
-      .finally(() => setLoading(false));
-  }, [dateFrom, dateTo]);
+      .then(({ summary }) => {
+        setSummary(summary);
+      })
+      .catch((err) => {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load sales summary."
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [authorized, dateFrom, dateTo]);
 
+  async function handlePasswordSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setPasswordError("");
+    setVerifying(true);
+
+    try {
+      const response = await fetch("/api/owner-access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPasswordError(data?.error || "Incorrect password.");
+        setPassword("");
+        return;
+      }
+
+      // Password accepted
+      setAuthorized(true);
+      setPassword("");
+    } catch {
+      setPasswordError("Unable to verify password. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  // Initial access check
+  if (checkingAccess) {
+    return (
+      <div className="mx-auto flex max-w-2xl justify-center px-4 py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-ink-faint" />
+      </div>
+    );
+  }
+
+  // Owner password screen
+  if (!authorized) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-10 md:py-16">
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-paper">
+            <Lock className="h-5 w-5 text-ink" />
+          </div>
+
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+            Owner Access
+          </h1>
+
+          <p className="mt-2 text-sm text-ink-muted">
+            Enter the owner password to view Sales Summary.
+          </p>
+
+          <form onSubmit={handlePasswordSubmit} className="mt-6">
+            <label className="mb-1.5 block text-xs font-medium text-ink-muted">
+              Owner password
+            </label>
+
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setPasswordError("");
+              }}
+              placeholder="Enter password"
+              autoFocus
+              autoComplete="current-password"
+              className="w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-dark"
+            />
+
+            {passwordError && (
+              <p className="mt-2 text-sm text-status-pending-text">
+                {passwordError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={!password || verifying}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-dark px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {verifying && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+
+              {verifying ? "Checking..." : "Continue"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Sales Summary
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 md:px-8 md:py-8">
-      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Sales Summary</h1>
-      <p className="mb-6 text-sm text-ink-muted">Orders and revenue by day.</p>
+      <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+        Sales Summary
+      </h1>
+
+      <p className="mb-6 text-sm text-ink-muted">
+        Orders and revenue by day.
+      </p>
 
       <div className="mb-6 flex flex-wrap gap-3 rounded-2xl border border-border bg-white p-4">
         <div className="flex-1">
-          <label className="mb-1 block text-xs font-medium text-ink-muted">From</label>
+          <label className="mb-1 block text-xs font-medium text-ink-muted">
+            From
+          </label>
+
           <input
             type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={(event) => setDateFrom(event.target.value)}
             className="w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand-dark"
           />
         </div>
+
         <div className="flex-1">
-          <label className="mb-1 block text-xs font-medium text-ink-muted">To</label>
+          <label className="mb-1 block text-xs font-medium text-ink-muted">
+            To
+          </label>
+
           <input
             type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={(event) => setDateTo(event.target.value)}
             className="w-full rounded-lg border border-border-strong bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand-dark"
           />
         </div>
+
         {(dateFrom || dateTo) && (
           <button
             onClick={() => {
@@ -78,18 +239,23 @@ export default function SalesSummaryPage() {
           <Loader2 className="h-6 w-6 animate-spin text-ink-faint" />
         </div>
       ) : error ? (
-        <p className="text-center text-sm text-status-pending-text">{error}</p>
+        <p className="text-center text-sm text-status-pending-text">
+          {error}
+        </p>
       ) : summary ? (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-border bg-white p-4">
               <p className="text-xs text-ink-muted">Total orders</p>
+
               <p className="mt-1 font-display text-2xl font-bold text-ink">
                 {summary.totalOrders}
               </p>
             </div>
+
             <div className="rounded-2xl border border-border bg-white p-4">
               <p className="text-xs text-ink-muted">Total sales</p>
+
               <p className="mt-1 font-display text-2xl font-bold text-brand-dark">
                 {formatCurrency(summary.totalSales)}
               </p>
@@ -101,24 +267,39 @@ export default function SalesSummaryPage() {
               <thead>
                 <tr className="border-b border-border bg-paper text-left text-xs uppercase tracking-wide text-ink-muted">
                   <th className="px-4 py-3 font-semibold">Date</th>
+
                   <th className="px-4 py-3 font-semibold">Orders</th>
-                  <th className="px-4 py-3 text-right font-semibold">Amount</th>
+
+                  <th className="px-4 py-3 text-right font-semibold">
+                    Amount
+                  </th>
                 </tr>
               </thead>
+
               <tbody>
                 {summary.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-8 text-center text-ink-muted">
+                    <td
+                      colSpan={3}
+                      className="px-4 py-8 text-center text-ink-muted"
+                    >
                       No orders in this range.
                     </td>
                   </tr>
                 ) : (
                   summary.rows.map((row) => (
-                    <tr key={row.date} className="border-b border-border last:border-0">
+                    <tr
+                      key={row.date}
+                      className="border-b border-border last:border-0"
+                    >
                       <td className="px-4 py-3 font-medium text-ink">
                         {formatDateLabel(row.date)}
                       </td>
-                      <td className="px-4 py-3 text-ink-muted">{row.order_count}</td>
+
+                      <td className="px-4 py-3 text-ink-muted">
+                        {row.order_count}
+                      </td>
+
                       <td className="px-4 py-3 text-right font-medium text-ink">
                         {formatCurrency(row.total_sales)}
                       </td>

@@ -1,5 +1,7 @@
+
 "use client";
 
+import OwnerAccessPrompt from "@/components/OwnerAccessPrompt";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -8,6 +10,7 @@ import {
   MessageCircle,
   Pencil,
   Printer,
+  Trash2,
   X,
 } from "lucide-react";
 import OrderFiles from "@/components/orders/OrderFiles";
@@ -143,6 +146,11 @@ export default function OrderDetailsPage({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Owner-protected delete
+  const [showDeleteAccess, setShowDeleteAccess] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   // Edit form state
   const [customerDetails, setCustomerDetails] = useState("");
   const [editLineItems, setEditLineItems] = useState<EditableLineItem[]>([]);
@@ -259,6 +267,49 @@ export default function OrderDetailsPage({
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Delete order after successful owner authentication
+  async function handleDeleteOrder() {
+    if (!order) return;
+
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: order.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Unable to delete order."
+        );
+      }
+
+      toast.success(`${order.order_number} deleted successfully.`);
+
+      window.location.href = "/dashboard";
+    } catch (error) {
+      console.error("Delete order error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to delete order.";
+
+      setDeleteError(message);
+      toast.error(message);
+      setDeleting(false);
     }
   }
 
@@ -589,7 +640,7 @@ export default function OrderDetailsPage({
       </div>
 
       {/* Dispatch */}
-      <div className="rounded-2xl border border-border bg-white p-5">
+      <div className="mb-6 rounded-2xl border border-border bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-ink-muted">
           Dispatch Details
         </h2>
@@ -609,6 +660,61 @@ export default function OrderDetailsPage({
           }
         />
       </div>
+
+      {/* Delete Order */}
+      <div className="rounded-2xl border border-red-200 bg-white p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-red-600">
+          Danger Zone
+        </h2>
+
+        <p className="mt-2 text-sm text-ink-muted">
+          Deleting this order will permanently remove the order,
+          uploaded files, and dispatch details.
+        </p>
+
+        {deleteError && (
+          <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+            {deleteError}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setDeleteError("");
+            setShowDeleteAccess(true);
+          }}
+          disabled={deleting}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-300 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deleting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Deleting Order...
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4" />
+              Delete Order
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Owner PIN popup */}
+      {showDeleteAccess && (
+        <OwnerAccessPrompt
+          onSuccess={async () => {
+            setShowDeleteAccess(false);
+            await handleDeleteOrder();
+          }}
+          onCancel={() => {
+            setShowDeleteAccess(false);
+            setDeleteError("");
+          }}
+        />
+      )}
     </div>
   );
 }
+

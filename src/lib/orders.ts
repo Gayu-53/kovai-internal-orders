@@ -303,6 +303,82 @@ export async function addOrderFile(
   if (error) throw new Error(`Failed to save file record: ${error.message}`);
   return data as OrderFile;
 }
+export async function deleteOrder(orderId: string): Promise<void> {
+  const supabase = getSupabaseAdmin();
+
+  // 1. Get all files belonging to this order
+  const { data: files, error: filesFetchError } = await supabase
+    .from("order_files")
+    .select("id, storage_path")
+    .eq("order_id", orderId);
+
+  if (filesFetchError) {
+    throw new Error(
+      `Failed to load order files: ${filesFetchError.message}`
+    );
+  }
+
+  // 2. Delete the actual files from Supabase Storage
+  if (files && files.length > 0) {
+    const storagePaths = files
+      .map((file) => file.storage_path)
+      .filter(Boolean);
+
+    if (storagePaths.length > 0) {
+      const { error: storageError } = await supabase.storage
+        .from(ORDER_FILES_BUCKET)
+        .remove(storagePaths);
+
+      if (storageError) {
+        throw new Error(
+          `Failed to delete order files from storage: ${storageError.message}`
+        );
+      }
+    }
+
+    // 3. Delete the order_files database records
+    const { error: filesDeleteError } = await supabase
+      .from("order_files")
+      .delete()
+      .eq("order_id", orderId);
+
+    if (filesDeleteError) {
+      throw new Error(
+        `Failed to delete order file records: ${filesDeleteError.message}`
+      );
+    }
+  }
+
+  // 4. Delete dispatch details for this order
+  const { error: dispatchDeleteError } = await supabase
+    .from("dispatch_details")
+    .delete()
+    .eq("order_id", orderId);
+
+  if (dispatchDeleteError) {
+    throw new Error(
+      `Failed to delete dispatch details: ${dispatchDeleteError.message}`
+    );
+  }
+
+  // 5. Finally delete the order itself
+  const { data: deletedOrder, error: orderDeleteError } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", orderId)
+    .select("id")
+    .maybeSingle();
+
+  if (orderDeleteError) {
+    throw new Error(
+      `Failed to delete order: ${orderDeleteError.message}`
+    );
+  }
+
+  if (!deletedOrder) {
+    throw new Error("Order not found.");
+  }
+}
 
 export async function deleteOrderFile(fileId: string): Promise<void> {
   const supabase = getSupabaseAdmin();

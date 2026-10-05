@@ -37,12 +37,13 @@ export default function OwnerAccessPrompt({
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        setError("Incorrect owner PIN.");
+      if (!response.ok) {
+        setError(data?.error || "Incorrect owner PIN.");
         setPassword("");
         return;
       }
 
+      // Password is correct
       onSuccess();
     } catch {
       setError("Something went wrong. Please try again.");
